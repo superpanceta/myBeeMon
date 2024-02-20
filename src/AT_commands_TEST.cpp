@@ -2,11 +2,7 @@
   Rui Santos
   Complete project details at https://RandomNerdTutorials.com/lilygo-t-sim7000g-esp32-lte-gprs-gps/
   
-  Permission is hereby granted, free of charge, to any person obtaining a copy
-  of this software and associated documentation files.
-  
-  The above copyright notice and this permission notice shall be included in all
-  copies or substantial portions of the Software.
+  Adaptando para envio de mensajes MQTT
 */
 
 // Original code: https://github.com/Xinyuan-LilyGO/LilyGO-T-SIM7000G/blob/master/examples/Arduino_NetworkTest/Arduino_NetworkTest.ino
@@ -30,6 +26,7 @@ const char gprsUser[] = "";
 const char gprsPass[] = "";
 
 #include <TinyGsmClient.h>
+#include <PubsubClient.h> 
 // #include <SPI.h> // No usamos la SD por el momento
 // #include <SD.h>  // No usamos la SD por el momento
 #include <Ticker.h>
@@ -120,7 +117,6 @@ void loop(){
     modemRestart();
     delay(2000);
     Serial.println("Failed to restart modem, attempting to continue without restarting");
-    return;
   }
 
   Serial.println("========SIMCOMATI======");
