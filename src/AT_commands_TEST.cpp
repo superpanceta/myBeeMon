@@ -25,8 +25,23 @@ const char apn[]  = "internet";     //SET TO YOUR APN
 const char gprsUser[] = "";
 const char gprsPass[] = "";
 
+// MQTT details
+const char* tagoDeviceName = "";
+const char* tagoBroker = "mqtt.tago.io";
+unsigned int tagoPort = 8883;
+const char* tagoUser = "beeMon";
+const char* tagoToken = "5d44ef90-8e03-4c32-8012-b770c72b0787";
+
+
+const char* topicWheight = "GsmClientTest/led";
+const char* topicInTemp = "GsmClientTest/init";
+const char* topicOuTemp = "GsmClientTest/ledStatus";
+const char* topicInHum = "GsmClientTest/ledStatus";
+
 #include <TinyGsmClient.h>
 #include <PubsubClient.h> 
+#include <ArduinoJson.h>
+
 // #include <SPI.h> // No usamos la SD por el momento
 // #include <SD.h>  // No usamos la SD por el momento
 #include <Ticker.h>
@@ -38,6 +53,9 @@ const char gprsPass[] = "";
 #else
   TinyGsm modem(SerialAT);
 #endif
+
+TinyGsmClient client(modem);
+PubSubClient  mqtt(client);
 
 // LilyGO T-SIM7000G Pinout
 #define UART_BAUD           115200
@@ -74,6 +92,26 @@ void modemRestart(){
   modemPowerOn();
 }
 
+
+boolean mqttConnect() {
+
+  if(!mqtt.connected()){
+    Serial.println();
+    Serial.println("Mqtt Client : [Not Connected]");
+    Serial.println("Mqtt Client : [Connecting]");
+    mqtt.setServer(tagoBroker, tagoPort);
+    mqtt.setBufferSize(1024);
+
+    if (mqtt.connect(tagoDeviceName, tagoUser, tagoToken)){
+      Serial.println("Mqtt Client : [Broker Connected]");
+      // Seguir aqui
+      // GEstionar tema topics
+
+
+    }
+  }
+}
+
 void setup(){
   // Set console baud rate
   SerialMon.begin(115200);
@@ -104,6 +142,9 @@ void setup(){
   Serial.println("To initialize the network test, please make sure your LTE ");
   Serial.println("antenna has been connected to the SIM interface on the board.");
   Serial.println("/**********************************************************/\n\n");
+
+  // MQTT 
+  mqtt.setServer(tagoBroker, 1883); // Need to modify for including token for TaGo
 
   delay(10000);
 }
