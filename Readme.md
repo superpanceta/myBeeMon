@@ -97,3 +97,6 @@ flowchart TB;
 * **Diagram**
 ![Alt text](./images/image-1.png)
 
+* **Giroscopio**
+  ![alt text](image.png)
+
