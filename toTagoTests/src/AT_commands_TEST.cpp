@@ -30,8 +30,8 @@ const char* tagoDeviceName = "";
 const char* tagoBroker = "mqtt.tago.io";
 unsigned int tagoPort = 8883;
 const char* tagoUser = "beeMon";
-const char* tagoToken = "5d44ef90-8e03-4c32-8012-b770c72b0787";
-
+//const char* tagoToken = "5d44ef90-8e03-4c32-8012-b770c72b0787";
+const char* tagoToken = "c972f429-2737-4ed1-841b-4a04881a09ad";
 
 const char* topicWheight = "GsmClientTest/led";
 const char* topicInTemp = "GsmClientTest/init";
@@ -44,7 +44,7 @@ const char* topicInHum = "GsmClientTest/ledStatus";
 
 // #include <SPI.h> // No usamos la SD por el momento
 // #include <SD.h>  // No usamos la SD por el momento
-#include <Ticker.h>
+#include <Ticker.h> // No parece que la usemos, es para temporizar 
 
 #ifdef DUMP_AT_COMMANDS
   #include <StreamDebugger.h>
@@ -70,7 +70,7 @@ PubSubClient  mqtt(client);
 #define SD_CS               13
 #define LED_PIN             12
 
-
+// Encender modem
 void modemPowerOn(){
   pinMode(PWR_PIN, OUTPUT);
   digitalWrite(PWR_PIN, LOW);
@@ -78,6 +78,7 @@ void modemPowerOn(){
   digitalWrite(PWR_PIN, HIGH);
 }
 
+// Apagar modem
 void modemPowerOff(){
   pinMode(PWR_PIN, OUTPUT);
   digitalWrite(PWR_PIN, LOW);
@@ -85,16 +86,15 @@ void modemPowerOff(){
   digitalWrite(PWR_PIN, HIGH);
 }
 
-
+// Reiniciar modem
 void modemRestart(){
   modemPowerOff();
   delay(1000);
   modemPowerOn();
 }
 
-
+// Conecta cliente MQTT
 boolean mqttConnect() {
-
   if(!mqtt.connected()){
     Serial.println();
     Serial.println("Mqtt Client : [Not Connected]");
@@ -106,8 +106,6 @@ boolean mqttConnect() {
       Serial.println("Mqtt Client : [Broker Connected]");
       // Seguir aqui
       // GEstionar tema topics
-
-
     }
   }
 }
@@ -123,17 +121,6 @@ void setup(){
   digitalWrite(LED_PIN, HIGH);
 
   modemPowerOn();  // Encendemos el modem
-
-  // Serial.println("========SDCard Detect.======");             // No usamos la SD por el momento     
-  // SPI.begin(SD_SCLK, SD_MISO, SD_MOSI);                       // No usamos la SD por el momento  
-  // if (!SD.begin(SD_CS)) {                                     // No usamos la SD por el momento    
-  //     Serial.println("SDCard MOUNT FAIL");                    // No usamos la SD por el momento
-  // } else {                                                    // No usamos la SD por el momento 
-  //   uint32_t cardSize = SD.cardSize() / (1024 * 1024);        // No usamos la SD por el momento 
-  //   String str = "SDCard Size: " + String(cardSize) + "MB";   // No usamos la SD por el momento 
-  //   Serial.println(str);                                      // No usamos la SD por el momento
-  // }                                                           // No usamos la SD por el momento
-  // Serial.println("===========================");              // No usamos la SD por el momento
 
   SerialAT.begin(UART_BAUD, SERIAL_8N1, PIN_RX, PIN_TX);
 

@@ -20,9 +20,21 @@
     https://github.com/wokwi/wokwigw/releases/
 */
 
-#include <DHTesp.h>
+#define TINY_GSM_MODEM_SIM7000
+#define TINY_GSM_RX_BUFFER 1024 // Set RX buffer to 1Kb
+#define SerialAT Serial1
+
+// Set serial for debug console (to the Serial Monitor, default speed 115200)
+#define SerialMon Serial
+
+// See all AT commands, if wanted
+// #define DUMP_AT_COMMANDS
+
+// set GSM PIN, if any
+#define GSM_PIN "6871"
+
+// Librerias
 #include <PubSubClient.h>
-#include <WiFi.h>
 #include <ArduinoJson.h> 
 
 

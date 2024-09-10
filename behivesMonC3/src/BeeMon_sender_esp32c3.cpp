@@ -7,12 +7,12 @@ Version: V1 - Codigo para el sender - Sera el mismo para todas las colmenas , ca
 */ 
 
 #include <Arduino.h>     // Needed for Visual Studio Code
-#include <WiFi.h> // Wifi para ESP32
+#include <WiFi.h>        // Wifi para ESP32
 #include <DHTesp.h>      // Sensor temp y humedad
 //#include <DHT_U.h>
-#include <esp_now.h> // Transmision entre ESP32s
-#include <HX711.h>  // Celdas de carga
-#include <Wire.h>   // Giroscopio
+#include <esp_now.h>     // Transmision entre ESP32s
+#include <HX711.h>       // Celdas de carga
+#include <Wire.h>        // Giroscopio
 
 // Global Variables
 // D1 - Usado para el SCL del giroscopio        -- Giroscopio
@@ -147,7 +147,7 @@ void setup(){
   }
   // Once ESPNow is successfully Init, we will register for Send CB to
   // get the status of Trasnmitted packet
-  esp_now_set_self_role(ESP_NOW_ROLE_CONTROLLER);
+  // esp_now_set_self_role(ESP_NOW_ROLE_CONTROLLER);  // Only needed in esp8266
   esp_now_register_send_cb(OnDataSent);
 
   // Register peer
