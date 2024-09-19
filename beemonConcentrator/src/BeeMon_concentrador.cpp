@@ -1,4 +1,4 @@
-// MQTT Test
+// MQTT Test Running currently
 #define TINY_GSM_MODEM_SIM7000
 #define TINY_GSM_RX_BUFFER 1024 // Set RX buffer to 1Kb
 #define SerialAT Serial1
@@ -19,13 +19,14 @@ const char gprsUser[] = "";
 const char gprsPass[] = "";
 
 // MQTT details
-const char *broker = "mqtt.tago.io";
-const char* device_token = "c972f429-2737-4ed1-841b-4a04881a09ad";
+const char *broker = "freemqttbroker.sfodo.crystalmq.com";
 const int   mqttPort = 1883;
+const char *device_token = "HDdINAkvt3W22JIPZL";
+const char *mqttUser = "lNdB4opOHuTXRKZtA2";
+#define ID_MQTT "0005" // id mqtt (para identificar sesión)
+const char *mqttDeviceNAme = "testSIM";
 
-const char *topicLed       = "GsmClientTest/led";       // Not used
-const char *topicInit      = "GsmClientTest/init";      // Not used 
-const char *topicLedStatus = "GsmClientTest/ledStatus"; // Not used
+
 
 #include <TinyGsmClient.h>
 #include <PubSubClient.h>
@@ -65,8 +66,6 @@ Ticker tick;
 #define SD_CS       13 // To be deleted
 #define LED_PIN     12 // To be deleted
 
-int ledStatus = LOW; // To be deleted
-
 uint32_t lastReconnectAttempt = 0;
 
 void modemPowerOn(){
@@ -94,25 +93,40 @@ void modemRestart(){
 void mqttConnect() {
   SerialMon.print("Connecting to TagoIO...");
   while (!mqtt.connected()) {
-    if (mqtt.connect("ESP32Client", device_token, "")) {
+    if (mqtt.connect(ID_MQTT, mqttUser, device_token)) {
       SerialMon.println(" connected");
     } else {
       SerialMon.print(" failed, rc=");
-      SerialMon.print(mqtt.state());
+      SerialMon.println(mqtt.state());
       delay(5000);
     }
   }
 }
 
 // Funcion para publicar
-void mqttPublish(int temp){
+void mqttPublish(int temp, int behiveNum){
+    String topic2use = "temperatura_"+ String(behiveNum)+ " : "; 
     String payload = "{";
-    payload += "\"temperatura\": ";
+    payload += topic2use;
     payload += temp;
     payload += "}";
     
     mqtt.publish("corzoBee/data/temp", payload.c_str());
+}
 
+
+// Funcion para Checkear GPRS y reconectar
+void checkNetConnecttion(){
+    if (!modem.isNetworkConnected()) {
+        SerialMon.println("Network connection failed. Reconnecting...");
+        modem.gprsConnect(apn, gprsUser, gprsPass);
+        }
+    if (modem.isGprsConnected()) {
+        SerialMon.println("GPRS connected successfully.");
+        } 
+    else {
+        SerialMon.println("GPRS connection failed.");
+        }
 }
 
 void setup()
@@ -152,8 +166,8 @@ void setup()
     for (int i = 0; i <= 4; i++) {
     uint8_t network[] = {
         2,  /*Automatic*/
-        38, /*LTE only*/
         13, /*GSM only*/
+        38, /*LTE only*/
         51  /*GSM and LTE only*/
     };
     Serial.printf("Try %d method\n", network[i]);
@@ -179,21 +193,43 @@ void setup()
         break;
     }
   }
+    delay(5000);  // Wait for 5 seconds to ensure a stable GPRS connection
+
+    // Connect the modem
+    #if TINY_GSM_USE_GPRS
+    // GPRS connection parameters are usually set after network registration
+    SerialMon.print(F("Connecting to "));
+    SerialMon.print(apn);
+    if (!modem.gprsConnect(apn, gprsUser, gprsPass)) {
+        SerialMon.println("GPRS Connection failed");
+        delay(10000);
+        return;
+    }
+    SerialMon.println(" success");
+
+    if (modem.isGprsConnected()) {
+        SerialMon.println("GPRS connected");
+    }
+    #endif
+
 
     // MQTT Broker setup
     mqtt.setServer(broker, mqttPort);
+
+    // Check connection
+    checkNetConnecttion();
 
     // Conectar a TagoIO
     mqttConnect();
 }
 
 void loop()
-{
-
-
-    // Make sure we're still registered on the network
+{    // Make sure we're still registered on the network
     if (!modem.isNetworkConnected()) {
         SerialMon.println("Network disconnected");
+        int16_t signal =  modem.getSignalQuality();
+        SerialMon.print("Señal : ");
+        SerialMon.println(signal);
         if (!modem.waitForNetwork(180000L, true)) {
             SerialMon.println(" fail");
             delay(10000);
@@ -221,22 +257,14 @@ void loop()
 #endif
     }
 
-    if (!mqtt.connected()) {
-        SerialMon.println("=== MQTT NOT CONNECTED ===");
-        // Reconnect every 10 seconds
-        uint32_t t = millis();
-        if (t - lastReconnectAttempt > 10000L) {
-            lastReconnectAttempt = t;
-            if (mqttConnect()) {
-                lastReconnectAttempt = 0;
-            }
-        }
-        delay(100);
-        return;
-    }
+   if (!mqtt.connected()) {
+    mqttConnect();
+  }
 
     // mqtt.loop(); // No es necesario si solo queremos publicar
     int tempRand = random(0, 50);
-    mqttPublish(tempRand);
+    int hiveNum = random(1, 3);
+    mqttPublish(tempRand, hiveNum);
+    delay(10000); 
 
 }

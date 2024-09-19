@@ -17,6 +17,8 @@
    * Peso\
    `/apiary{id}/hive{ID}/weight`
 
+* Sincronizar Real-Time Clock senders con concentrador y este via NTP ?
+
    
   
 
@@ -37,7 +39,7 @@ flowchart LR
     (LilyGo Sim7000E)
     ***Sensor Temperatura Exterior***
     (DHT11)`"]
-    receptor["` **TAGIo**`"]
+    receptor["` **mosquito on Rasp**`"]
     colmenas -- esp_now ---> concentrador -- mqtt ---> receptor
     
 ```
@@ -55,8 +57,8 @@ flowchart LR
     concentrador["`**CONCENTRADOR**
     (LilyGo Sim7000E)
     ***Sensor Temperatura Exterior***
-    (DHT11)`"]
-    receptor["` **TAGIo**`"]
+    (MPU6050)`"]
+    receptor["` **mosquito on Rasp**`"]
     colmenas -- esp_now ---> concentrador -- mqtt ---> receptor
     
 ```
@@ -100,3 +102,6 @@ flowchart TB;
 * **Giroscopio**
   ![alt text](image.png)
 
+
+* **ESP32 C3**
+* 
