@@ -3,12 +3,10 @@ Autor : Angel Manuel Garcia Martin
 gitHub: superpanceta@gmail.com
 Placa : ESP32-C3 SuperMini
 Comentarios: En Arduino IDE para imprimir por el serial se ha de habilitar :  Tools > USB CDC On Boot > Enabled
-2024-09-01: Version: V1 - Codigo para el sender - Sera el mismo para todas las colmenas , cambiando solamente el ID  y la calibracion de las celdas de carga
-2024-09-10: Adaptar 
+Version: V1 - Codigo para el sender - Sera el mismo para todas las colmenas , cambiando solamente el ID  y la calibracion de las celdas de carga
 */ 
 
 #include <Arduino.h>     // Needed for Visual Studio Code
-#include <esp_sleep.h>   // Libreria para dormir el ESP32
 #include <WiFi.h>        // Wifi para ESP32
 #include <DHTesp.h>      // Sensor temp y humedad
 //#include <DHT_U.h>
@@ -17,8 +15,8 @@ Comentarios: En Arduino IDE para imprimir por el serial se ha de habilitar :  To
 #include <Wire.h>        // Giroscopio
 
 // Global Variables
-// D4 - Usado para el SCL del giroscopio        -- Giroscopio
-// D5 - Usado para el SDA del giroscopio        -- Giroscopio
+// D1 - Usado para el SCL del giroscopio        -- Giroscopio
+// D2 - Usado para el SDA del giroscopio        -- Giroscopio
 #define DHTpin 14  //D5 of NodeMCUis GPIO14     -- Sensor temperatura/humedad
 #define LOADCELL_DOUT_PIN 12 // D6 // E- | DT   -- Celda de Carga
 #define LOADCELL_SCK_PIN 13  // D7 // A- | SCK  -- Celda de Carga
@@ -38,36 +36,31 @@ DHTesp dht;
 HX711 scale; 
 float weightCalibration[] = {-24.03, 0, 0};  // Calibracion para las diferentes celdas de carga
 
-// Constantes
-const uint8_t broadcastAddress[] = {0x30, 0x83, 0x98, 0x7b, 0xdb, 0x90}; // MAC receiver LillyGo SIM7000 -- De momento solo tenemos un concentrador
-
 // Variables
 
+uint8_t broadcastAddress[] = {0x30, 0x83, 0x98, 0x7b, 0xdb, 0x90}; // MAC receiver
 float humedad;
 float temperatura;
 float peso;
-int colmena_id = 1;   // ID Colmena
+int nombre_colmena = 1;   // ID Colmena
 
 // Estructura de los datos que se enviaran
 typedef struct struct_message 
 {
-  float s_temperatura;
-  float s_humedad;
-  float s_peso;
-  int s_colmena_id;
-  double s_angulos[3];
+  float temperatura;
+  float humedad;
+  float peso;
+  int colmena_id;
+  double angulos[3];
 } struct_message;
 
 // Creamos variable para los datos a enviar
 struct_message myData;
 
-esp_now_peer_info_t peerInfo;
-
 
 // Callback when data is sent
-void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
-  Serial.print("Last Packet Send Status:\t");
-  Serial.println(status == ESP_NOW_SEND_SUCCESS ? "Delivery Success" : "Delivery Fail"); // Otra opcion de checkear
+void OnDataSent(uint8_t *mac_addr, uint8_t sendStatus) {
+  Serial.print("Last Packet Send Status: ");
   if (sendStatus == 0){
     Serial.println("Delivery success");
   }
@@ -102,23 +95,26 @@ void getInclination(){
   int xAng = map(AcX,minVal,maxVal,-90,90);
   int yAng = map(AcY,minVal,maxVal,-90,90);
   int zAng = map(AcZ,minVal,maxVal,-90,90);
-  //Obtenemos los angulos 
+    
   angulos[0]= RAD_TO_DEG * (atan2(-yAng, -zAng)+PI);
   angulos[1]= RAD_TO_DEG * (atan2(-xAng, -zAng)+PI);
   angulos[2]= RAD_TO_DEG * (atan2(-yAng, -xAng)+PI);
+
 }
 
 // Funcion para enviar los datos
 void sendData(){
-  myData.s_colmena_id = colmena_id;
-  myData.s_humedad = humedad;
-  myData.s_temperatura = temperatura;
-  myData.s_peso = peso;
-  myData.s_angulos[0] = angulos[0];
-  myData.s_angulos[1] = angulos[1];
-  myData.s_angulos[2] = angulos[2];
+  myData.colmena_id = nombre_colmena;
+  myData.humedad = humedad;
+  myData.temperatura = temperatura;
+  myData.peso = peso;
+  myData.angulos[0] = angulos[0];
+  myData.angulos[1] = angulos[1];
+  myData.angulos[2] = angulos[2];
+
   // Enviar datos
   esp_now_send(broadcastAddress, (uint8_t *) &myData, sizeof(myData));
+
 }
 
 // Imprimir datos por el Serial Monitor a efectos de debug
@@ -174,22 +170,17 @@ void setup(){
   Wire.write(0);
   Wire.endTransmission(true);
   
-  // Medir datos en Setup ya que depues dormimos el ESP
-  getTmp_hum(); // Temperatura y Humedad
-  getWeight();  // Peso
-  getInclination(); // Inclinacion
-  printData();  // Imprimir datos
-  sendData();   // Enviar a LilyGo
-  
-  // Dormimos el ESP -- Modo test 5 min
-  esp_deep_sleep(2000000); // 10 Seconds 2000000 -- 5 min = 2000000 * 30  
-
-  // A partir de aqui no se ejecuta nada ya que cuando despierta comienza como arrancando de Zero
 
 }
 
 
 void loop() {
+  // Medir datos
+  getTmp_hum(); // Temperatura y Humedad
+  getWeight();  // Peso
+  getInclination(); // Inclinacion
+  printData();  // Imprimir datos
+  sendData();   // Enviar a LilyGo
   
   delay(5000);
 }
