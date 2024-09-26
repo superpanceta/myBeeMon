@@ -6,6 +6,13 @@ Comentarios: En Arduino IDE para imprimir por el serial se ha de habilitar :  To
 2024-09-01: Version: V1   - Codigo para el concentrador - Modo test envio a CrystalMQ
 2024-09-11: Version: V1.1 - Añadidas callback para ESP-NOW y struct a usar igual que la usada en el sender
 2024-09-11: Version: V1.2 - Creada funcion para enviar datos a mosquito / funcion mqttPublish usada en esp-now callback
+2024-09-19: Version: V2.0 - Migrar el envio del mqtt de cristalMq a la Raspberry
+                          - Cambio topics a solamente /temperatura
+                                                      /humedad
+                                                      /peso
+                                                      /tempExt
+2024-09-23: Version: 2.1  - Funcion envio a rasp funcionando en modo tets, llegan todos los datos probados, temperatura, humedad, peso
+2024-09-23: Version: 2.2  - Probar integracion con monitores
 */ 
 
 #define TINY_GSM_MODEM_SIM7000
@@ -28,10 +35,10 @@ const char gprsUser[] = "";
 const char gprsPass[] = "";
 
 // MQTT details
-const char *broker = "freemqttbroker.sfodo.crystalmq.com";
+const char *broker = "mynoipmq.ddns.net";
 const int   mqttPort = 1883;
-const char *device_token = "HDdINAkvt3W22JIPZL";
-const char *mqttUser = "lNdB4opOHuTXRKZtA2";
+const char *mqttPass = "aporellos";
+const char *mqttUser = "pance";
 #define ID_MQTT "0005" // id mqtt (para identificar sesión)
 const char *mqttDeviceNAme = "testSIM";
 
@@ -40,6 +47,7 @@ const char *mqttDeviceNAme = "testSIM";
 #include <TinyGsmClient.h>
 #include <PubSubClient.h>
 #include <Ticker.h>
+#include <WiFi.h>
 #include <esp_now.h>
 
 // Just in case someone defined the wrong thing..
@@ -84,8 +92,9 @@ typedef struct struct_message
   float s_temperatura;
   float s_humedad;
   float s_peso;
+  float s_tempExt;
   int s_colmena_id;
-  double s_angulos[3];
+  //double s_angulos[3];
 } struct_message;
 
 // Creamos variable para los datos a enviar
@@ -116,7 +125,7 @@ void modemRestart(){
 void mqttConnect() {
   SerialMon.print("Connecting to TagoIO...");
   while (!mqtt.connected()) {
-    if (mqtt.connect(ID_MQTT, mqttUser, device_token)) {
+    if (mqtt.connect(ID_MQTT, mqttUser, mqttPass)) {
       SerialMon.println(" connected");
     } else {
       SerialMon.print(" failed, rc=");
@@ -126,23 +135,195 @@ void mqttConnect() {
   }
 }
 
-/*
-// Funcion para publicar
-void mqttPublish(int temp, int behiveNum){
-    String topic2use = "temperatura_"+ String(behiveNum)+ " : "; 
-    String payload = "{";
-    payload += topic2use;
-    payload += temp;
-    payload += "}";
-    
-    mqtt.publish("corzoBee/data/temp", payload.c_str());
-}
-*/
 
-
-// NEW Funcion para publicar, usaremos la estructura que nos llega de ESP-NOW
+// Last Funcion para publicar
+// Estructura a mandar que es con la que esta funcionando actualmente
+// A probar enviando via wokWiki
+// "{ \"beehive\": \"beehive1\", \"valor\": \"35%\" }"
 void mqttPublish(const struct_message &data){
-    const char* medidas[] = {"temperatura", "humedad", "peso"};
+    const char* medidas[] = {"temperatura", "humedad", "peso", "tempExt"};
+    size_t length = sizeof(medidas) / sizeof(medidas[0]); 
+    for (size_t i = 0; i < length; i++) {
+      char topic[100]="";
+      char beehive[100]="";
+      char message[100]="";
+      char buffer[50];
+      char valor[50];
+      // Creamos el topic que sera el timpo de medida
+      strcat(topic, medidas[i]); 
+      // Convertimos el id de la colmena a string
+      sprintf(buffer, "%d", data.s_colmena_id);
+      // Creamos el beehive number con beehive + s_colmena_id
+      strcat(beehive, "beehive");
+      strcat(beehive, buffer);
+      switch (i)
+      {
+        case 0:
+          Serial.println(topic);
+          /*
+          Serial.println(beehive);
+          Serial.println(s_temperatura);*/
+          // Pasamos temp de float a str
+          sprintf(valor, "%.2f", data.s_temperatura);
+          //Creamos el message a enviar
+          strcat(message, "{ \"beehive\": \"");
+          strcat(message, beehive);
+          strcat(message, "\", \"valor\": \"");
+          strcat(message, valor);
+          strcat(message, "\" }");
+          Serial.println(message);
+          //mqtt.publish(topic, message);
+          break;
+        case 1:
+          Serial.println(topic);
+          /*
+          Serial.println(beehive);
+          Serial.println(s_humedad);*/
+          // Pasamos temp de float a str
+          sprintf(valor, "%.2f", data.s_humedad);
+          //Creamos el message a enviar
+          strcat(message, "{ \"beehive\": \"");
+          strcat(message, beehive);
+          strcat(message, "\", \"valor\": \"");
+          strcat(message, valor);
+          strcat(message, "\" }");
+          Serial.println(message);
+          //mqtt.publish(topic, message);
+          break;
+        case 2:
+          Serial.println(topic);
+          /*
+          Serial.println(beehive);
+          Serial.println(s_peso);*/
+          // Pasamos temp de float a str
+          sprintf(valor, "%.2f", data.s_peso);
+          //Creamos el message a enviar
+          strcat(message, "{ \"beehive\": \"");
+          strcat(message, beehive);
+          strcat(message, "\", \"valor\": \"");
+          strcat(message, valor);
+          strcat(message, "\" }");
+          Serial.println(message);
+          //mqtt.publish(topic, message);
+          break;
+        case 3:
+          Serial.println(topic);
+          /*
+          Serial.println(beehive);
+          Serial.println(s_tempExt); */
+          // Pasamos temp de float a str
+          sprintf(valor, "%.2f", data.s_tempExt);
+          //Creamos el message a enviar
+          strcat(message, "{ \"beehive\": \"");
+          strcat(message, beehive);
+          strcat(message, "\", \"valor\": \"");
+          strcat(message, valor);
+          strcat(message, "\" }");
+          Serial.println(message);
+          //mqtt.publish(topic, message);
+          break;
+        default:
+          break;  
+      }
+}
+}
+
+
+// FUNCION PARA TESTEAR GRAFANA
+// Last Funcion para publicar
+// Estructura a mandar que es con la que esta funcionando actualmente
+// A probar enviando via wokWiki
+// "{ \"beehive\": \"beehive1\", \"valor\": \"35%\" }"
+void mqttPublish_test(float s_temperatura, float s_humedad, float s_peso, float s_tempExt, int s_colmena_id){
+    const char* medidas[] = {"temperatura", "humedad", "peso", "tempExt"};
+    size_t length = sizeof(medidas) / sizeof(medidas[0]); 
+    for (size_t i = 0; i < length; i++) {
+      char topic[100]="";
+      char beehive[100]="";
+      char message[100]="";
+      char buffer[50];
+      char valor[50];
+      // Creamos el topic que sera el timpo de medida
+      strcat(topic, medidas[i]); 
+      // Convertimos el id de la colmena a string
+      sprintf(buffer, "%d", s_colmena_id);
+      // Creamos el beehive number con beehive + s_colmena_id
+      strcat(beehive, "beehive");
+      strcat(beehive, buffer);
+      switch (i)
+      {
+        case 0:
+          Serial.println(topic);
+          /*
+          Serial.println(beehive);
+          Serial.println(s_temperatura);*/
+          // Pasamos temp de float a str
+          sprintf(valor, "%.2f", s_temperatura);
+          //Creamos el message a enviar
+          strcat(message, "{ \"beehive\": \"");
+          strcat(message, beehive);
+          strcat(message, "\", \"valor\": \"");
+          strcat(message, valor);
+          strcat(message, "\" }");
+          Serial.println(message);
+          mqtt.publish(topic, message);
+          break;
+        case 1:
+          Serial.println(topic);
+          /*
+          Serial.println(beehive);
+          Serial.println(s_humedad);*/
+          // Pasamos temp de float a str
+          sprintf(valor, "%.2f", s_humedad);
+          //Creamos el message a enviar
+          strcat(message, "{ \"beehive\": \"");
+          strcat(message, beehive);
+          strcat(message, "\", \"valor\": \"");
+          strcat(message, valor);
+          strcat(message, "\" }");
+          Serial.println(message);
+          mqtt.publish(topic, message);
+          break;
+        case 2:
+          Serial.println(topic);
+          // Pasamos temp de float a str
+          sprintf(valor, "%.2f", s_peso);
+          //Creamos el message a enviar
+          strcat(message, "{ \"beehive\": \"");
+          strcat(message, beehive);
+          strcat(message, "\", \"valor\": \"");
+          strcat(message, valor);
+          strcat(message, "\" }");
+          Serial.println(message);
+          mqtt.publish(topic, message);
+          break;
+        case 3:
+          Serial.println(topic);
+          // Pasamos temp de float a str
+          sprintf(valor, "%.2f", s_tempExt);
+          //Creamos el message a enviar
+          strcat(message, "{ \"beehive\": \"");
+          strcat(message, beehive);
+          strcat(message, "\", \"valor\": \"");
+          strcat(message, valor);
+          strcat(message, "\" }");
+          Serial.println(message);
+          mqtt.publish(topic, message);
+          break;
+        default:
+          break;  
+      }
+}
+}
+
+
+
+/*
+// Funcion antigua para el envio de los daros a mosquito
+// Estructura a mandar
+// "{ \"beehive\": \"beehive1\", \"valor\": \"35%\" }"
+void mqttPublish(const struct_message &data){
+    const char* medidas[] = {"temperatura", "humedad", "peso", "tempExt"};
     size_t length = sizeof(medidas) / sizeof(medidas[0]);      // Calculamos el tamaño del array
     // Recorremos el array para ir generando el topic y mandando los datos
     for (size_t i = 0; i < length; i++) {
@@ -172,6 +353,7 @@ void mqttPublish(const struct_message &data){
       topic[0] = '\0';
     }
 }
+*/
 
 
 
@@ -202,7 +384,7 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
   Serial.print("Peso: ");
   Serial.println(myData.s_peso);
   Serial.print("Angulos: ");
-  Serial.println(myData.s_angulos);
+  //Serial.println(myData.s_angulos);
   Serial.println();
   // Envio a MQTT
   mqttPublish(myData);
@@ -302,7 +484,7 @@ void setup()
     mqttConnect();
 
     // ESP-NOW
-    Wifi.mode(WIFI_STA);                          // Seteamos el Wi-Fi como Station
+    WiFi.mode(WIFI_STA);                          // Seteamos el Wi-Fi como Station
     if (esp_now_init() != ESP_OK){                // Iniciamos ESP-NOW
       SerialMon.println("Error niciando ESP-NOW");
       return;
@@ -350,9 +532,14 @@ void loop()
   }
 
     // mqtt.loop(); // No es necesario si solo queremos publicar
-    int tempRand = random(0, 50);
-    int hiveNum = random(1, 3);
-    mqttPublish(tempRand, hiveNum);
+    float tempRand = random(31, 45);
+    int hiveNum = random(1, 8);
+    float pesoRand = random(10, 50);
+    float humRand = random(40, 100);
+    float tempExtRand = random(0,31);
+    // mqttPublish(tempRand, hiveNum);
+    // mqttPublish_test(float s_temperatura, float s_humedad, float s_peso, float s_tempExt, int s_colmena_id)
+    mqttPublish_test(tempRand, humRand, pesoRand, tempExtRand, hiveNum);
     delay(10000); 
 
 }
